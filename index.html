@@ -23,13 +23,18 @@
         }
 
         .cover {
-            width: 180px;
+            min-width: 180px;
+            max-width: 180px;
             height: 180px;
+            margin-left: 35px;
             border-style: solid;
             border-color: #2548bb;
             border-radius: 5px;
             border-width: 3px;
-            margin-left: 35px;
+        }
+
+        .cover:not([src]) {
+            visibility: hidden;
         }
 
         header {
@@ -40,7 +45,7 @@
             white-space: nowrap;
         }
 
-        .btn {
+        .btn_container {
             display: flex;
             justify-content: center;
             position: absolute;
@@ -48,7 +53,7 @@
             min-width: calc(100vw - 693px);
         }
 
-        button {
+        .button {
             appearance: none;
             background-color: transparent;
             border: 2px solid #1A1A1A;
@@ -77,18 +82,14 @@
             margin: 20%
         }
 
-        button:disabled {
-            pointer-events: none;
-        }
-
-        button:hover {
+        .button:hover {
             color: #fff;
             background-color: #1A1A1A;
             box-shadow: rgba(0, 0, 0, 0.25) 0 8px 15px;
             transform: translateY(-2px);
         }
 
-        button:active {
+        .button:active {
             box-shadow: none;
             transform: translateY(0);
         }
@@ -111,6 +112,124 @@
         #upload {
             min-width: 693px;
             text-align: center;
+        }
+
+        input {
+            display: none;
+        }
+
+        select {
+            appearance: none;
+
+            @supports (appearance: base-select) {
+
+                &,
+                &::picker(select) {
+                    appearance: base-select;
+                }
+            }
+        }
+
+        select {
+            display: flex;
+            justify-content: space-between;
+            min-width: 300px;
+            align-items: center;
+            color: #3B3B3B;
+            padding-block: 10px;
+            padding-inline: 10px 30px;
+            border-radius: 15px;
+            border: 2px solid #1A1A1A;
+            cursor: pointer;
+            font-family: Roobert, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            font-size: 16px;
+            font-weight: 600;
+            background: transparent;
+
+            @supports (appearance: base-select) {
+                padding-inline: 10px;
+                background-image: none;
+
+                &::picker-icon {
+                    content: "";
+                    width: 20px;
+                    height: 20px;
+                    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%23000000' class='size-6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m19.5 8.25-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E%0A");
+                    transition: rotate 0.2s ease-out;
+                }
+
+                &:open::picker-icon {
+                    rotate: 180deg;
+                }
+
+                &::picker(select) {
+                    padding: 0;
+                    margin-top: 5px;
+                    border: 2px solid #1A1A1A;
+                    background: #5499e3;
+                    border-radius: 5px;
+                    font-weight: 400;
+
+                    opacity: 0;
+                    height: 0;
+                    overflow: clip;
+                    transition: height 0.5s ease-out, opacity 0.5s ease-out, overlay 0.5s,
+                        display 0.5s;
+
+                    transition-behavior: allow-discrete;
+                }
+
+                &:open::picker(select) {
+                    opacity: 1;
+                    height: auto;
+                    overflow: auto;
+
+                    @starting-style {
+                        opacity: 0;
+                        height: 0;
+                    }
+                }
+
+                option {
+                    padding: 10px;
+                    border-top: 1px solid #1A1A1A;
+                    cursor: pointer;
+                    transition-property: color, background;
+                    transition-duration: 0.2s;
+                    transition-timing-function: ease-out;
+
+                    &:where(:hover, :active) {
+                        background: #1A1A1A;
+                        color: white;
+                    }
+
+                    &:checked {
+                        background: #1c2f43;
+                        border-left-width: 2px;
+                        border-right-width: 2px;
+                        color: white;
+                    }
+
+                    &::checkmark {
+                        display: none;
+                    }
+
+                    &:first-child {
+                        border: 0;
+                    }
+
+                    &:disabled {
+                        background: #1A1A1A;
+                        color: white;
+                    }
+                }
+            }
+        }
+
+        h2 {
+            font-weight: 100;
+            font-size: 12px;
+            margin: 3px;
         }
     </style>
     <script>
@@ -144,25 +263,72 @@
     <div class="game">
         <img class="cover" src="alttp.webp">
         <header>The Legend of Zelda - A Link to the Past</header>
-        <div class="btn"><button onclick="loadIframe('alttp.html')">Open Game</button></div>
+        <div class="btn_container"><button class="button" onclick="loadIframe('alttp.html')">Open Game</button></div>
     </div>
     <div class="game">
         <img class="cover" src="FF6-EternalCrystals.jpg">
         <header>Final Fantasy 6 - Eternal Crystals (ROM Hack)</header>
-        <div class="btn"><button onclick="loadIframe('FFVI-EternalCrystals.html')">Open Game</button></div>
+        <div class="btn_container"><button class="button" onclick="loadIframe('FFVI-EternalCrystals.html')">Open
+                Game</button></div>
+    </div>
+    <div class="game">
+        <img class="cover">
+        <header>Fire Emblem - The Binding Blade</header>
+        <div class="btn_container"><button class="button"
+                onclick="loadIframe('Fire Emblem - The Binding Blade.html')">Open Game</button></div>
     </div>
     <div class="game">
         <div id="upload">
-            <h1>upload your own rom</h1>
-            <input type="file" id="filePicker">
-            <select id="core" required>
-                <option value="" disabled selected>Select a System</option>
-                <option value="snes">Super Nintendo Entertainment System</option>
-                <option value="gba">Game Boy Advanced</option>
-            </select>
+            <h1>Upload your own ROM</h1>
+            <div style="justify-content: space-evenly; display: flex;">
+                <div>
+                    <label class="button" style="margin:0; width:200px;" for="filePicker">
+                        Upload File
+                    </label>
+                    <h2 id="fileName">No File Chosen</h2>
+                    <input type="file" id="filePicker">
+                </div>
+                <select id="core" required>
+                    <option value="" disabled selected>Select a System</option>
+                    <option value="nes">Nintendo Entertainment System</option>
+                    <option value="snes">Super Nintendo Entertainment System</option>
+                    <option value="vb">Virtual Boy</option>
+                    <option value="n64">Nintendo 64</option>
+                    <option value="gb">Game Boy Color</option>
+                    <option value="gba">Game Boy Advanced</option>
+                    <option value="nds">Nintendo DS</option>
+                    <option value="psx">Play Station 1</option>
+                    <option value="psp">Play Station Portable</option>
+                    <option value="a5200">Atari 5200</option>
+                    <option value="atari7800">Atari 7800</option>
+                    <option value="atari2600">Atari 2600</option>
+                    <option value="jaguar">Atari Jaguar</option>
+                    <option value="lynx">Atari Lynx</option>
+                    <option value="segaSaturn">Sega Saturn</option>
+                    <option value="segaCD">Sega CD</option>
+                    <option value="segaGG">Sega Game Gear</option>
+                    <option value="segaMD">Sega Mega Drive</option>
+                    <option value="dos">DOSbox</option>
+                    <option value="mame2003">MAME</option>
+                    <option value="arcade">Final Burn Neo</option>
+                    <option value="3do">3DO</option>
+                </select>
+            </div>
         </div>
-        <div class="btn"><button onclick="uploadGame()">Upload File</button></div>
+        <div class="btn_container"><button class="button" onclick="uploadGame()">Open ROM</button></div>
     </div>
+    <script>
+        document.getElementById("filePicker").addEventListener('change', (event) => {
+            const files = event.target.files;
+            const fileNameDisplay = document.getElementById("fileName");
+
+            if (files.length > 0) {
+                fileNameDisplay.textContent = files[0].name;
+            } else {
+                fileNameDisplay.textContent = 'No file chosen';
+            }
+        });
+    </script>
     <iframe id="iframe" src="about:blank">
 </body>
 
