@@ -153,16 +153,21 @@ window.EJS_ready = function () {
         toolbar.insertBefore(btn, document.getElementsByClassName('ejs_menu_bar_spacer')[0]);
     }
 };
-/*
-window.EJS_onExit = function () {
-    console.log("emulator exited")
-    //window.location.href = "index.html"
-}
-*/
-document.addEventListener("click", function(event) {
+
+document.addEventListener("click", function (event) {
     const target = event.target;
-    
+
     if (target && target.tagName === 'BUTTON' && target.textContent.trim() === 'Exit') {
         window.frameElement.src = "about:blank"
     }
 }, true);
+
+window.EJS_onGameStart = function () {
+    if (localStorage.getItem("controls_loaded") === null) {
+        localStorage.setItem("controls_loaded", "true");
+        window.EJS_emulator.controls[0][27] = { "value": 67 };
+        window.EJS_emulator.controls[0][28] = { "value": 68 };
+        window.EJS_emulator.changeSettingOption("rewindEnabled", "enabled");
+        window.location.reload();
+    };
+};
