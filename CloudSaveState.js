@@ -1,128 +1,144 @@
-import "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js";
-import "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js";
-import "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js";
-import lzString from 'https://cdn.jsdelivr.net/npm/lz-string@1.5.0/+esm';
+import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
 
-const firebaseConfig = {
-    apiKey: "AIzaSyBBsfW596EMYpr_CRAKGbey8bzwph13O8Q",
-    authDomain: "emulatorjs-saves.firebaseapp.com",
-    projectId: "emulatorjs-saves",
-    storageBucket: "emulatorjs-saves.firebasestorage.app",
-    messagingSenderId: "887868463850",
-    appId: "1:887868463850:web:a80b3cf39802d732115593",
-    measurementId: "G-NLV8WNB743"
-};
+const supabaseUrl = 'https://llnwsokwwqgghyrzhnng.supabase.co'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxsbndzb2t3d3FnZ2h5cnpobm5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4Nzg0MTEsImV4cCI6MjEwNjQ1NDQxMX0.13z82zKQqsY9T80WyzOif-F7LxsbHyJVtI5ar5L3hL0'
+export const supabase = createClient(supabaseUrl, supabaseKey)
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-let currentUid = null;
+async function signInWithGooglePopup() {
+    supabase.auth.signOut();
+    // 1. Generate the URL and point the redirect to our new callback page
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            skipBrowserRedirect: true,
+            redirectTo: window.location.origin + '/callback.html'
+        }
+    })
 
-firebase.firestore().settings({
-    experimentalForceLongPolling: true
-});
-
-
-function Login() {
-    try {
-        console.log("attempted login")
-        auth.signInAnonymously(auth);
-    } catch (error) {
-        console.error("Authentication failed:", error)
+    if (error || !data?.url) {
+        console.error('Error generating auth URL:', error?.message)
+        return
     }
-};
 
-auth.onAuthStateChanged(function (user) {
-    if (user) {
-        currentUid = user.uid;
-        console.log("Logged in anonymously with ID:", currentUid);
+    // 2. Open the popup
+    const width = 500, height = 650
+    const left = window.screenX + (window.outerWidth - width) / 2
+    const top = window.screenY + (window.outerHeight - height) / 2
+    const popupFeatures = `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+
+    const popup = window.open(data.url, 'SupabaseAuthPopup', popupFeatures)
+
+    // 3. Actively poll for the session 
+    const checkSession = setInterval(async () => {
+        // Did the user close the popup manually before finishing?
+        if (popup && popup.closed) {
+            clearInterval(checkSession)
+        }
+
+        // Check if the session was successfully saved by the callback page
+        const { data: { session } } = await supabase.auth.getSession()
+
+        if (session) {
+            clearInterval(checkSession)
+            console.log('User successfully logged in! ID:', session.user.id)
+            window.EJS_emulator.displayMessage("Successfully Logged In")
+            window.UID = session.user.id
+
+            // If the popup somehow didn't close itself, force it shut
+            if (popup && !popup.closed) {
+                popup.close()
+            }
+
+            // TODO: Run your setup functions here (e.g., fetch their save files)
+        }
+    }, 1000) // Check every 1 second
+}
+
+async function checkUserSession() {
+    const { data: { session }, error } = await supabase.auth.getSession()
+
+    if (session) {
+        const userId = session.user.id
+        console.log('User is logged in! ID:', userId)
+
+        // Now you can pass `userId` into your uploadSaveState() and downloadSaveState() functions
+        return userId
     } else {
-        console.log("No previous login.");
-        Login()
+        console.log('No user is currently logged in.')
+        return null
     }
-});
+}
 
-function handleGoogleAuth() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    const currentUser = firebase.auth().currentUser;
+async function uploadSaveState(saveFile, gameId, userId = 'default_user') {
+    // We use `upsert: true` so it overwrites any existing save for this game.
+    const filePath = `${userId}/${gameId}.state`
 
-    if (currentUser && currentUser.isAnonymous) {
-        currentUser.linkWithPopup(provider)
-            .then((result) => {
-                console.log("Successfully linked guest progress to Google account");
-                window.EJS_emulator.displayMessage(`Account ${result.user.email} linked`);
-            })
-            .catch((error) => {
-                if (error.code === 'auth/credential-already-in-use') {
-                    console.log("Google account already exists. Switching to existing account...");
+    const { data, error } = await supabase.storage
+        .from('saves') // Must match your bucket name
+        .upload(filePath, saveFile, {
+            cacheControl: '10800',
+            upsert: true
+        })
 
-                    firebase.auth().signInWithCredential(error.credential)
-                        .then((result) => {
-                            console.log("Logged in as returning user!", result.user.uid);
-                            window.EJS_emulator.displayMessage(`save sate restored under ${result.user.email}`);
-                        });
-                } else {
-                    console.error("Linking error:", error);
-                }
-            });
-    } else {
-        firebase.auth().signInWithPopup(provider)
-            .then((result) => {
-                console.log("Logged in with Google:", result.user.uid);
-                window.EJS_emulator.displayMessage(`Logged in as: ${result.user.email}`);
-            })
-            .catch((error) => console.error("Sign-in error:", error));
+    if (error) {
+        console.error('Failed to upload save state:', error.message)
+        return false
     }
-};
+
+    console.log('Save state uploaded successfully!', data)
+    return true
+}
+
+async function downloadSaveState(gameId, userId = 'default_user') {
+    const filePath = `${userId}/${gameId}.state`
+
+    const { data, error } = await supabase.storage
+        .from('saves')
+        .download(filePath)
+
+    if (error) {
+        console.error('Failed to download save state:', error.message)
+        return null
+    }
+
+    // Supabase returns a Blob. We MUST convert it for EmulatorJS.
+    const arrayBuffer = await data.arrayBuffer()
+    const uint8Array = new Uint8Array(arrayBuffer)
+
+    console.log('Save state downloaded and converted successfully!')
+
+    return uint8Array
+}
 
 window.EJS_onSaveState = function ({ state }) {
-    if (!currentUid) return;
-
-    let binary = '';
-    const len = state.byteLength;
-    for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(state[i]);
-    }
-    const base64State = btoa(binary);
-
-    const gameSaveData = {
-        data: lzString.compressToUTF16(base64State),
-        lastSaved: new Date().toISOString()
-    };
-
-    db.collection("games").doc(window.EJS_gameName).collection("users").doc(currentUid).set(gameSaveData)
-        .then(function () {
-            window.EJS_emulator.displayMessage("State saved");
-        })
-        .catch(function (error) {
-            console.error("Error saving game data:", error);
+    if (window.UID) {
+        uploadSaveState(state, EJS_gameName, window.UID).then((bool) => {
+            if (bool) {
+                window.EJS_emulator.displayMessage("State Saved");
+            } else {
+                window.EJS_emulator.displayMessage("Save Failed");
+            };
         });
+    } else {
+        window.EJS_emulator.displayMessage("No Login")
+    };
 };
 
 window.EJS_onLoadState = function () {
-    db.collection("games").doc(window.EJS_gameName).collection("users").doc(currentUid).get({ source: "server" }).then((doc) => {
-        if (!doc.exists) {
-            console.log("No save state found.");
-            return;
-        }
-
-        const compressedData = doc.data().data;
-
-        const base64State = lzString.decompressFromUTF16(compressedData);
-
-        const binaryString = atob(base64State);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-
-        window.EJS_emulator.gameManager.loadState(bytes)
-    }).catch((error) => {
-        console.error("Error fetching save state:", error);
-    });
+    if (window.UID) {
+        downloadSaveState(EJS_gameName, window.UID).then((state) => {
+            if (state) {
+                window.EJS_emulator.gameManager.loadState(state)
+                window.EJS_emulator.displayMessage("State Loaded")
+            } else {
+                window.EJS_emulator.displayMessage("Load Failed")
+            }
+        })
+    } else {
+        window.EJS_emulator.displayMessage("No Login")
+    };
 };
-
+//create button in menubar
 window.EJS_ready = function () {
     const toolbar = document.getElementsByClassName('ejs_menu_bar')[0];
 
@@ -147,13 +163,13 @@ window.EJS_ready = function () {
         });
 
         btn.addEventListener('click', () => {
-            handleGoogleAuth();
+            signInWithGooglePopup();
         });
 
         toolbar.insertBefore(btn, document.getElementsByClassName('ejs_menu_bar_spacer')[0]);
     }
 };
-
+//exit functionality
 document.addEventListener("click", function (event) {
     const target = event.target;
 
@@ -161,13 +177,18 @@ document.addEventListener("click", function (event) {
         window.frameElement.src = "about:blank"
     }
 }, true);
-
+//load settings
 window.EJS_onGameStart = function () {
-    if (localStorage.getItem("controls_loaded") === null) {
-        localStorage.setItem("controls_loaded", "true");
+    if (localStorage.getItem(`controls_loaded - ${window.EJS_gameName}`) === null) {
+        localStorage.setItem(`controls_loaded - ${window.EJS_gameName}`, "true");
         window.EJS_emulator.controls[0][27] = { "value": 67 };
         window.EJS_emulator.controls[0][28] = { "value": 68 };
         window.EJS_emulator.changeSettingOption("rewindEnabled", "enabled");
-        window.location.reload();
+        console.log("controls changed sucessfully")
+        setTimeout(() => {
+            window.location.reload()
+        }, 100);
     };
 };
+
+window.UID = await checkUserSession();

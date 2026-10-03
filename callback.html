@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Authenticating...</title>
+</head>
+<body>
+  <p>Completing login... you can close this window.</p>
+  
+  <script type="module">
+    // Import your Supabase client exactly as you did in your main file
+    import { supabase } from './CloudSaveState.js'
+
+    // Supabase will automatically parse the URL to complete the login.
+    // Once it finishes, it fires the SIGNED_IN event.
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || session) {
+        window.close() // Instantly close the popup
+      }
+    })
+  </script>
+</body>
+</html>
