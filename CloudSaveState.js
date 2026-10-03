@@ -11,7 +11,7 @@ async function signInWithGooglePopup() {
         provider: 'google',
         options: {
             skipBrowserRedirect: true,
-            redirectTo: window.location.origin + '/callback.html'
+            redirectTo: 'https://henrycref.github.io/Emulator-Hub/callback.html'
         }
     })
 
